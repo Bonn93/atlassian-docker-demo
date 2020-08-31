@@ -1,6 +1,6 @@
 ---
-- name: Deploy Bitbucket App Node 1
-  hosts: bitbucket-01
+- name: Deploy Bitbucket App Node 2
+  hosts: bitbucket-02
   become: true
 
   tasks:
@@ -18,7 +18,7 @@
         fstype: nfs
     - name: run bitbucket
       docker_container:
-        name: bitbucket-01
+        name: bitbucket-02
         image: atlassian/bitbucket-server:{{version}} 
         state: started
         restart: yes
@@ -35,8 +35,8 @@
           HAZELCAST_NODE_AUTHENTICATION_ENABLED: "{{hazelcastauthenabled}}"
           HAZELCAST_NETWORK_MULTICAST: "{{hazelcastmulticast}}"
           HAZELCAST_NETWORK_TCPIP: "{{hazelcasttcpip}}"
-          HAZELCAST_NETWORK_TCPIP_MEMBERS: "{{bitbucketnode02ip}}:{{hazelcastport}}"
-          HAZELCAST_LOCAL_PUBLIC_ADDRESS: "{{bitbucketnode01ip}}"
+          HAZELCAST_NETWORK_TCPIP_MEMBERS: "{{bitbucketnode01ip}}:{{hazelcastport}}"
+          HAZELCAST_LOCAL_PUBLIC_ADDRESS: "{{bitbucketnode02ip}}"
           ELASTICSEARCH_ENABLED: "{{elasticsearchenabled}}"
           JDBC_DRIVER: "{{jdbcdrivertype}}"
           JDBC_USER: "{{dbuser}}"
