@@ -1,0 +1,8 @@
+version: 7.4.1
+hazelcastport: "5701" 
+hazelcastauthenabled: "false" 
+dbport: "5432"
+dbuser: bitbucket
+dbpassword: bitbucket
+database: bitbucket
+dbhost: 192.168.10.11

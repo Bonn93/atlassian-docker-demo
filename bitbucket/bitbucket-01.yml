@@ -1,0 +1,32 @@
+---
+- name: Deploy Bitbucket App Node 1
+  hosts: bitbucket-01
+  become: true
+
+  tasks:
+    - name: run bitbucket
+      docker_container:
+        name: bitbucket-01
+        image: atlassian/bitbucket-server:{{version}} 
+        state: started
+        restart: yes
+        ports:
+         - "7990:7990"
+         - "7999:7999"
+         - "5701:5701"
+        volumes: 
+          - /root/bitbucket-home:/var/atlassian/application-data/bitbucket
+          - /mnt/shared:/var/atlassian/application-data/bitbucket/shared
+        env:
+          HAZELCAST_PORT: "{{hazelcastport}}"
+          HAZELCAST_NODE_AUTHENTICATION_ENABLED: "{{hazelcastauthenabled}}"
+          HAZELCAST_NETWORK_MULTICAST: "false"
+          HAZELCAST_NETWORK_TCPIP: "true"
+          HAZELCAST_NETWORK_TCPIP_MEMBERS: "192.168.10.12:5701"
+          HAZELCAST_LOCAL_PUBLIC_ADDRESS: "192.168.10.11"
+          ELASTICSEARCH_ENABLED: "false"
+          JDBC_DRIVER: "org.postgresql.Driver"
+          JDBC_USER: "{{dbuser}}"
+          JDBC_PASSWORD: "{{dbpassword}}"
+          JDBC_URL: "jdbc:postgresql://{{dbhost}}.{{dbport}}/{{database}}"
+
