@@ -1,0 +1,169 @@
+---
+- name: pre-pull new versions to make upgrades super fast!
+  hosts: jira-servers
+
+  tasks:
+    - name: pre-pull jira image for upgrade
+      command: docker pull atlassian/jira-software:{{jiraversion}}
+
+- name: ZDU pipeline start
+  hosts: localhost
+  #become: true
+
+  tasks:
+    - name: trigger ZDU API
+      uri:
+        url: http://{{jiranode01ip}}:{{jiraport}}/rest/api/2/cluster/zdu/start
+        method: POST
+        validate_certs: no
+        headers:
+          Content-Type: application/json
+        force_basic_auth: yes
+        user: "{{jiraadminuser}}"
+        password: "{{jiraadminpassword}}"
+        status_code: 201
+
+- name: upgrade jira-01
+  hosts: jira-01
+
+  tasks:
+    - name: stop existing container
+      docker_container:
+        name: jira-01
+        state: stopped
+    - name: remove jira-01
+      docker_container:
+        name: jira-01
+        state: absent
+    - name: Run the new Jira version/image
+      docker_container:
+        name: "jira-01"
+        image: atlassian/jira-software:{{jiraversion}}
+        state: started
+        network_mode: host
+        restart: yes
+        restart_policy: "{{restartpolicy}}"
+        ports:
+         - "{{jiraport}}:{{jiraport}}"
+         - "{{ehcachermi1}}:{{ehcachermi1}}"
+         - "{{ehcachermi2}}:{{ehcachermi2}}"
+        volumes: 
+          - "{{localhome}}:/var/atlassian/application-data/jira"
+          - "{{sharedhome}}:/var/atlassian/shared"
+        env:
+          EHCACHE_LISTENER_PORT: "{{ehcachermi1}}"
+          EHCACHE_LISTENER_HOSTNAME: "{{jiranode01ip}}"
+          JIRA_NODE_ID: jira-01
+          JIRA_SHARED_HOME: "/var/atlassian/shared"
+          CLUSTERED: "{{clustered}}"
+          JVM_MINIMUM_MEMORY: "{{jvmsize}}"
+          JVM_MAXIMUM_MEMORY: "{{jvmsize}}"
+          ATL_JDBC_URL: "jdbc:{{jdbcurltype}}://{{dbhost}}:{{dbport}}/{{database}}"
+          ATL_JDBC_USER: "{{dbuser}}"
+          ATL_JDBC_PASSWORD: "{{dbpassword}}"
+          ATL_DB_DRIVER: "{{jdbcdrivertype}}"
+          ATL_DB_TYPE: "{{jdbctype}}"
+
+- name: jira-01-healthplay
+  hosts: localhost
+
+  tasks:
+    - name: trigger health test
+      uri:
+        url: http://{{jiranode01ip}}:{{jiraport}}/rest/api/2/serverInfo
+        method: GET
+        validate_certs: no
+        headers:
+          Content-Type: application/json
+        force_basic_auth: yes
+        user: "{{jiraadminuser}}"
+        password: "{{jiraadminpassword}}"
+        status_code: 200
+      register: _result
+      until: _result.status == 200
+      retries: 720 # 720 * 5 seconds = 1hour (60*60/5)
+      delay: 5 # Every 5 seconds
+
+- name: upgrade jira-2
+  hosts: jira-02
+
+  tasks:
+    - name: stop existing container
+      docker_container:
+        name: jira-02
+        state: stopped
+    - name: remove jira-02
+      docker_container:
+        name: jira-02
+        state: absent
+    - name: run new jira image
+      docker_container:
+        name: "jira-02"
+        image: atlassian/jira-software:{{jiraversion}} 
+        state: started
+        network_mode: host
+        restart: yes
+        restart_policy: "{{restartpolicy}}"
+        ports:
+         - "{{jiraport}}:{{jiraport}}"
+         - "{{ehcachermi1}}:{{ehcachermi1}}"
+         - "{{ehcachermi2}}:{{ehcachermi2}}"
+        volumes: 
+          - "{{localhome}}:/var/atlassian/application-data/jira"
+          - "{{sharedhome}}:/var/atlassian/shared"
+        env:
+          EHCACHE_LISTENER_PORT: "{{ehcachermi1}}"
+          EHCACHE_LISTENER_HOSTNAME: "{{jiranode02ip}}"
+          JIRA_NODE_ID: jira-02
+          JIRA_SHARED_HOME: "/var/atlassian/shared"
+          CLUSTERED: "{{clustered}}"
+          JVM_MINIMUM_MEMORY: "{{jvmsize}}"
+          JVM_MAXIMUM_MEMORY: "{{jvmsize}}"
+          ATL_JDBC_URL: "jdbc:{{jdbcurltype}}://{{dbhost}}:{{dbport}}/{{database}}"
+          ATL_JDBC_USER: "{{dbuser}}"
+          ATL_JDBC_PASSWORD: "{{dbpassword}}"
+          ATL_DB_DRIVER: "{{jdbcdrivertype}}"
+          ATL_DB_TYPE: "{{jdbctype}}"
+
+- name: jira-02-healthplay
+  hosts: localhost
+
+  tasks:
+    - name: trigger health test
+      uri:
+        url: http://{{jiranode02ip}}:{{jiraport}}/rest/api/2/serverInfo
+        method: GET
+        validate_certs: no
+        headers:
+          Content-Type: application/json
+        force_basic_auth: yes
+        user: "{{jiraadminuser}}"
+        password: "{{jiraadminpassword}}"
+        status_code: 200
+      register: _result
+      until: _result.status == 200
+      retries: 720 # 720 * 5 seconds = 1hour (60*60/5)
+      delay: 5 # Every 5 seconds
+
+- name: ZDU pipeline complete
+  hosts: localhost
+
+  tasks:
+    - name: trigger ZDU API
+      uri:
+        url: http://{{jiranode01ip}}:{{jiraport}}/rest/api/2/cluster/zdu/approve
+        method: POST
+        validate_certs: no
+        headers:
+          Content-Type: application/json
+        force_basic_auth: yes
+        user: "{{jiraadminuser}}"
+        password: "{{jiraadminpassword}}"
+        status_code: 200
+
+- name: clean up older images
+  hosts: jira-servers
+
+  tasks:
+    - name: system prune
+      command: docker system prune -f

@@ -1,0 +1,51 @@
+---
+- name: Deploy Jira on Node1 
+  hosts: jira-01
+
+  tasks:
+    - name: check localhome dir is present
+      file:
+        path: "{{localhome}}"
+        state: directory
+        mode: '0755'
+        group: 2001
+    - name: mount nfs
+      mount:
+        path: "{{sharedhome}}"
+        src: "{{nfsserverip}}:{{nfspath}}"
+        opts: "{{mountopts}}"
+        state: mounted
+        fstype: nfs
+    - name: chmod
+      command: chown -R 2001:2001 {{sharedhome}}
+    - name: run jira
+      docker_container:
+        name: jira-01
+        image: atlassian/jira-software:{{jiraversion}} 
+        state: started
+        network_mode: host
+        restart: yes
+        restart_policy: "{{restartpolicy}}"
+        ports:
+         - "{{jiraport}}:{{jiraport}}"
+         - "{{ehcachermi1}}:{{ehcachermi1}}"
+         - "{{ehcachermi2}}:{{ehcachermi2}}"
+        volumes: 
+          - "{{localhome}}:/var/atlassian/application-data/jira"
+          - "{{sharedhome}}:/var/atlassian/shared"
+        env:
+          EHCACHE_LISTENER_PORT: "{{ehcachermi1}}"
+          EHCACHE_LISTENER_HOSTNAME: "{{jiranode01ip}}"
+          JIRA_NODE_ID: jira-01
+          JIRA_SHARED_HOME: "/var/atlassian/shared"
+          CLUSTERED: "{{clustered}}"
+          JVM_MINIMUM_MEMORY: "{{jvmsize}}"
+          JVM_MAXIMUM_MEMORY: "{{jvmsize}}"
+          ATL_JDBC_URL: "jdbc:{{jdbcurltype}}://{{dbhost}}:{{dbport}}/{{database}}"
+          ATL_JDBC_USER: "{{dbuser}}"
+          ATL_JDBC_PASSWORD: "{{dbpassword}}"
+          ATL_DB_DRIVER: "{{jdbcdrivertype}}"
+          ATL_DB_TYPE: "{{jdbctype}}"
+          #CATALINA_CONNECTOR_PROXYNAME: "{{proxyname}}"
+          #CATALINA_CONNECTOR_SCHEME: "{{proxyscheme}}"
+          #CATALINA_CONNECTOR_SECURE: "{{proxysecure}}"
