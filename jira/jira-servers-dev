@@ -1,0 +1,24 @@
+[jira-01]
+192.168.10.11
+
+[jira-01:vars]
+ansible_ssh_user=root
+ansible_python_interpreter=/usr/bin/python3
+jira_node_identifier=jira-01
+
+[jira-02]
+192.168.10.12
+
+[jira-02:vars]
+ansible_ssh_user=root
+ansible_python_interpreter=/usr/bin/python3
+jira_node_identifier=jira-02
+
+[jira-servers]
+192.168.10.11 jira_node_identifier="jira-01" ansible_python_interpreter=/usr/bin/python3
+192.168.10.12 jira_node_identifier="jira-02" ansible_python_interpreter=/usr/bin/python3
+
+[jira-servers:vars]
+ansible_ssh_user=root
+ansible_python_interpreter=/usr/bin/python3
+
